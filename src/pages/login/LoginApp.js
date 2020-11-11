@@ -5,9 +5,7 @@ import {
     TextField,
     Grid,
     Paper,
-    AppBar,
     Typography,
-    Toolbar,
     Link,
 } from "@material-ui/core";
 import "./LoginApp.css";
@@ -24,7 +22,7 @@ class LoginApp extends Component {
     }
     handleSubmit(event) {
         event.preventDefault();
-        if (this.state.username == 'admin@littech.in' && this.state.password == 'secret') {
+        if (this.state.username === 'admin@admin.com' && this.state.password === 'admin') {
             this.props.history.push("/home");
         } else {
             alert('Incorrect Credntials!');
