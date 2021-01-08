@@ -20,6 +20,15 @@ import { Provider } from "react-redux";
 const studentStore = createStore(studentReducer);
 const teacherStore = createStore(teacherReducer);
 
+function providerHOC(WrappedComponent, store) {
+  return function (props) {
+    return (
+      <Provider store={store}>
+        <WrappedComponent {...props} />
+      </Provider>
+    )
+  }
+}
 class App extends Component {
   render() {
 
@@ -39,8 +48,8 @@ class App extends Component {
         </AppBar> */}
         <Switch>
           <Route path="/" exact component={LoginApp} />
-          <Provider store={studentStore}><Route path="/student" component={StudentApp} /></Provider>
-          <Provider store={teacherStore}><Route path="/teacher" component={TeacherApp} /></Provider>
+          <Route path="/student" component={providerHOC(StudentApp, studentStore)} />
+          <Route path="/teacher" component={providerHOC(TeacherApp, teacherStore)} />
         </Switch>
         {/* </ThemeProvider> */}
       </>

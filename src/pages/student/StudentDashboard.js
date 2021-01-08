@@ -1,5 +1,8 @@
-import { Grid, Paper, ThemeProvider, Typography, withStyles } from '@material-ui/core';
+import { Grid, Paper, ThemeProvider, Typography, withStyles, Fab } from '@material-ui/core';
+import { Add as AddIcon } from "@material-ui/icons"
 import React, { Component } from 'react';
+import AddCourseDialog from "./components/AddCourseDialog"
+import AllAttendance from "../../components/allAttendance";
 import { RadarChart, PolarGrid, PolarRadiusAxis, PolarAngleAxis, Radar, PieChart, Pie, RadialBar, RadialBarChart } from "recharts";
 import { connect } from "react-redux";
 
@@ -45,64 +48,58 @@ const attendace = [
   // { name: "absent", value: 10 }
 ]
 
+
+
 class StudentDashboard extends Component {
+  state = {
+    isAddCourseDialogOpen: false,
+  }
+  handleAddCourseDialogClose = () => {
+    this.setState({ isAddCourseDialogOpen: false });
+  }
+  showAddCourseDialog = () => {
+    this.setState({ isAddCourseDialogOpen: true });
+  }
   render() {
     const { classes } = this.props;
-    console.log(this.props.subjects);
     return (
-      <div className="student-dashboard">
-        <div>
-          <Typography variant="h4" display="inline" component="h4">Welcome, </Typography>
-          <Typography variant="h3" display="inline" component="h3">{this.props.name}</Typography>
-        </div>
+      <>
+        {this.state.isAddCourseDialogOpen && <AddCourseDialog handleClose={this.handleAddCourseDialogClose} isOpen={this.state.isAddCourseDialogOpen} courses={this.props.unregisteredCourses} />}
+
+        <Fab variant="extended" style={{ position: "fixed", bottom: "1em", right: "1em" }} color="primary" onClick={this.showAddCourseDialog}>
+          <AddIcon className="px-1" />
+          Add Course
+        </Fab>
+
+
         <Grid container justify="space-evenly" spacing={3}>
+
+          {/* <Grid item xs={12}>
+            <Typography variant="h4" display="inline" component="h4">Welcome, </Typography>
+            <Typography variant="h3" display="inline" component="h3">{this.props.name}</Typography>
+          </Grid> */}
           <Grid item xs={12}>
             <Paper className={classes.padded}>
               <Typography variant="h5" component="div">Overall performance:</Typography>
               <div className={classes.alignCenter}>
 
                 <div style={{ display: "inline-block" }}>
-                  <RadarChart cx={250} cy={250} outerRadius={150} width={500} height={500} data={data}>
+                  <RadarChart cx={250} cy={250} outerRadius={150} width={500} height={500} data={this.props.courses}>
                     <PolarGrid />
-                    <PolarAngleAxis dataKey="subject" />
+                    <PolarAngleAxis dataKey="name" />
                     <PolarRadiusAxis />
-                    <Radar name="Mike" dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                    <Radar name="Mike" dataKey="attendance" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
                   </RadarChart>
                 </div>
               </div>
             </Paper>
           </Grid>
 
-          {(this.props.subjects && Object.keys(this.props.subjects).length > 0) ?
-            <Paper className={classes.padded}>
-              <Typography variant="h5" component="div">Overall performance:</Typography>
-              <Grid container item xs={12} justify="space-evenly">
-                {Object.keys(this.props.subjects).map((sub, ind) => (
-                  <Grid item xs={12} sm={6} lg={4} key={sub}>
-                    <PieChart width={730} height={250}>
-                      <Pie data={this.props.subjects[sub]["attendance"]} dataKey="value" cx="50%" cy="50%" innerRadius={70} outerRadius={90} fill="#82ca9d" />
-                      <text x="50%" y="50%" dy={8} textAnchor="middle">temp</text>
-                    </PieChart>
-                    <Typography variant="h6" component="div">sub</Typography>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
-            :
-            null
-          }
-
-          <PieChart width={400} height={400}>
-            <Pie data={attendace} dataKey="value" cx="50%" cy="50%" innerRadius={70} outerRadius={90} fill="#82ca9d" />
-            <text x="50%" y="50%" dy={8} textAnchor="middle">temp</text>
-          </PieChart>
-          <RadialBarChart width={500} height={500} cx="50%" cy="50%" innerRadius={200} outerRadius={300} barSize={50} data={attendace}>
-            <RadialBar minAngle={15} label={{ position: 'insideStart', fill: '#fff' }} background clockWise dataKey="value" />
-            <text x="50%" y="50%" dy={8} textAnchor="middle">temp</text>
-            {/* <Legend iconSize={10} width={120} height={140} layout="vertical" verticalAlign="middle" wrapperStyle={style} /> */}
-          </RadialBarChart>
+          <Grid item xs={12}>
+            <AllAttendance courses={this.props.courses} student />
+          </Grid>
         </Grid>
-      </div >
+      </>
     );
   }
 }
@@ -112,6 +109,8 @@ const mapStateToProps = state => {
     name: state.name,
     batch: state.batch,
     subjects: state.subjects,
+    courses: state.courses,
+    unregisteredCourses: state.unregisteredCourses,
   }
 }
 

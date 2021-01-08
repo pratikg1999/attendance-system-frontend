@@ -17,14 +17,17 @@ import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 // import InboxIcon from '@material-ui/icons/MoveToInbox';
 // import MailIcon from '@material-ui/icons/Mail';
-import { CollectionsBookmark as CollectionsBookmarkIcon, ExpandLess, ExpandMore, Mail as MailIcon, Inbox as InboxIcon, StarBorder, Dashboard as DashboardIcon, Class as ClassIcon } from "@material-ui/icons";
+import { CollectionsBookmark as CollectionsBookmarkIcon, ExpandLess, ExpandMore, Mail as MailIcon, Inbox as InboxIcon, StarBorder, Dashboard as DashboardIcon, Class as ClassIcon, PowerSettingsNew } from "@material-ui/icons";
 import StudentDashboard from "./StudentDashboard"
 import Collapse from '@material-ui/core/Collapse';
 import { Switch, Route, NavLink } from "react-router-dom";
 import { render } from '@testing-library/react';
-
+import axios from "../../axiosInstance"
 import * as actionTypes from '../../store/student/actions';
+import Courses from "./StudentCourses"
 import { connect } from 'react-redux';
+import { Backdrop, CircularProgress, Snackbar } from "@material-ui/core";
+
 const drawerWidth = 240;
 
 const styles = (theme) => {
@@ -91,11 +94,21 @@ const styles = (theme) => {
     nested: {
       paddingLeft: theme.spacing(4),
     },
+    backdrop: {
+      zIndex: theme.zIndex.drawer + 1,
+      color: '#fff',
+    },
   }
 };
 
 class MiniDrawer extends React.Component {
-  componentDidMount(){
+  constructor(props) {
+    super(props);
+
+    axios.defaults.headers['x-access-token'] = window.localStorage["x-access-token"];
+    console.log(window.localStorage["x-access-token"]);
+  }
+  async componentDidMount() {
     const subjects = {
       english: {
         absent: 10,
@@ -110,15 +123,31 @@ class MiniDrawer extends React.Component {
         present: 90,
       },
     }
-    for (let sub in subjects){
-      subjects[sub]["attendance"] = [{label:"presnt", value:subjects[sub]["present"]/(subjects[sub]["present"] + subjects[sub]["absent"])}, {label:"absent", value:subjects[sub]["absent"]/(subjects[sub]["present"] + subjects[sub]["absent"])}];
+    for (let sub in subjects) {
+      subjects[sub]["attendance"] = [{ label: "presnt", value: subjects[sub]["present"] / (subjects[sub]["present"] + subjects[sub]["absent"]) }, { label: "absent", value: subjects[sub]["absent"] / (subjects[sub]["present"] + subjects[sub]["absent"]) }];
     }
-    this.props.setStudentState({name:"Pratik", batch:"BTech 2021 CSE", subjects:subjects});
+    // this.props.setStudentState({ name: "Pratik", batch: "BTech 2021 CSE", subjects: subjects });
+    let registeredCourses = [], unregisteredCourses = [];
+
+    this.props.setStudentState({ isLoading: true });
+    axios.get('/student/myCourses').then(({ data }) => this.props.setStudentState({ courses: data, isLoading: false, showSnackbar: true, snackbarMessage: "Loaded Successfully" })).catch(err => this.props.setStudentState({ isLoading: false, showSnackbar: true, snackbarMessage: "Some error occured" }));
+    axios.get('/student/unregCourses').then(({ data }) => this.props.setStudentState({ unregisteredCourses: data })).catch(err => this.props.setStudentState({ isLoading: false, showSnackbar: true, snackbarMessage: "Some error occured" }));
+
+
+
+
   }
 
   state = {
     subListExpanded: false,
     open: false,
+  }
+
+  logout = () => {
+    localStorage.removeItem("x-access-token");
+    localStorage.removeItem("role");
+    delete axios.defaults.headers["x-access-token"];
+    this.props.history.push('/');
   }
 
   setOpen = (newOpen) => {
@@ -150,6 +179,22 @@ class MiniDrawer extends React.Component {
     // console.log(this.props.theme.breakpoints.up('sm'));
     return (
       <>
+        {this.props.isLoading &&
+          <Backdrop className={classes.backdrop} open={this.props.isLoading} >
+            <CircularProgress color="inherit" />
+          </Backdrop>
+        }
+        {this.props.showSnackbar &&
+          <Snackbar
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+            open={this.props.showSnackbar}
+            autoHideDuration={2000}
+            onClose={() => this.props.setStudentState({ showSnackbar: false })}
+            message={this.props.snackbarMessage} />
+        }
         <div className={classes.root}>
           <CssBaseline />
           <AppBar
@@ -171,8 +216,13 @@ class MiniDrawer extends React.Component {
                 <MenuIcon />
               </IconButton>
               <Typography variant="h6" noWrap>
-                Mini variant drawer
+                Student Section
           </Typography>
+              <div style={{ marginLeft: "auto" }}>
+                <IconButton edge="end" color="inherit" onClick={this.logout}>
+                  <PowerSettingsNew />
+                </IconButton>
+              </div>
             </Toolbar>
           </AppBar>
           <Drawer
@@ -201,38 +251,40 @@ class MiniDrawer extends React.Component {
                 <ListItemText primary="Dashboard" />
               </ListItem>
             </List>
-            
-            {(this.props.subjects && Object.keys(this.props.subjects).length>0) ? 
-            <>
-            <Divider />
-            <List>
-              <ListItem button onClick={this.handleSubListClick}>
-                <ListItemIcon>
-                  <CollectionsBookmarkIcon />
-                </ListItemIcon>
-                <ListItemText primary="My classes" />
-                {this.state.subListExpanded ? <ExpandLess /> : <ExpandMore />}
-              </ListItem>
-              <Collapse in={this.state.subListExpanded} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                {Object.keys(this.props.subjects).map((sub, ind)=>(
-                  <ListItem button key={sub} className={classes.nested} selected={this.props.location.pathname === this.props.match.path + "/classes/" + sub.toLowerCase()} component={NavLink} to={`${this.props.match.path}/classes/${sub.toLowerCase()}`}>
-                    <ListItemIcon><ClassIcon /></ListItemIcon>
-                  <ListItemText primary={sub.charAt(0).toUpperCase() + sub.slice(1).toLowerCase()} />
-                </ListItem>
-                ))}
+
+            {(this.props.courses && Array.isArray(this.props.courses) && this.props.courses.length > 0) ?
+              <>
+                <Divider />
+                <List>
+                  <ListItem button onClick={this.handleSubListClick} title="My Courses">
+                    <ListItemIcon>
+                      <CollectionsBookmarkIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="My courses" />
+                    {this.state.subListExpanded ? <ExpandLess /> : <ExpandMore />}
+                  </ListItem>
+                  <Collapse in={this.state.subListExpanded} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      {this.props.courses.map(course => {
+                        const sub = course.name || "";
+                        const subid = course.id || course._id;
+                        return (
+                          <ListItem button key={subid} className={classes.nested} selected={this.props.location.pathname === this.props.match.path + "/courses/" + subid} component={NavLink} to={`${this.props.match.path}/courses/${subid}`} title={sub.toTitleCase()}>
+                            <ListItemIcon><ClassIcon /></ListItemIcon>
+                            <ListItemText primary={sub.charAt(0).toUpperCase() + sub.slice(1).toLowerCase()} />
+                          </ListItem>);
+                      })
+                      }
+                    </List>
+                  </Collapse>
                 </List>
-              </Collapse>
-            </List>
-            </>
-            : null}
+              </>
+              : null}
           </Drawer>
           <main className={classes.content}>
             <div className={classes.toolbar} />
             <Route path={`${this.props.match.path}/dashboard`} exact component={StudentDashboard} />
-            <Typography paragraph>
-              First line
-          </Typography>
+            <Route path={`${this.props.match.path}/courses/`} component={Courses} />
           </main>
         </div>
       </>
@@ -245,12 +297,17 @@ const mapStateToProps = state => {
     name: state.name,
     batch: state.batch,
     subjects: state.subjects,
+    courses: state.courses,
+    unregisteredCourses: state.unregisteredCourses,
+    isLoading: state.isLoading,
+    showSnackbar: state.showSnackbar,
+    snackbarMessage: state.snackbarMessage,
   }
 }
 
 const mapDisptachToProps = dispatch => {
-  return{
-    setStudentState: (newState)=>dispatch({type:actionTypes.MODIFY_STATE, newState: newState})
+  return {
+    setStudentState: (newState) => dispatch({ type: actionTypes.MODIFY_STATE, newState: newState })
   }
 }
 
